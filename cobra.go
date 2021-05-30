@@ -38,7 +38,8 @@ func load(cmd *cobra.Command, config interface{}) error {
 		return err
 	}
 
-	flag := cmd.Flag(configFlag)
+	flags := cmd.LocalFlags()
+	flag := flags.Lookup(configFlag)
 	if flag != nil {
 		val := flag.Value.String()
 		err = setJSONConfig(val, config)
