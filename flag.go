@@ -34,7 +34,11 @@ func (p FlagParser) GetString(ctx context.Context, name string) (string, error) 
 		return "", ErrFlagNotFound{name}
 	}
 
-	return flag.Value.String(), nil
+	if flag.Changed {
+		return flag.Value.String(), nil
+	}
+
+	return "", ErrFlagNotFound{name}
 }
 
 // GetInt returns a environment variable as an integer
