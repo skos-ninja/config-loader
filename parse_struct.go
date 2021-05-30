@@ -59,7 +59,11 @@ func ParseStruct(ctx context.Context, s interface{}, failOnParseError bool) erro
 					}
 					continue
 				}
-				v.Field(i).SetString(value)
+				if value != "" {
+					v.Field(i).SetString(value)
+				} else {
+					break
+				}
 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 				value, err := f.GetInt(ctx, tag)
 				if err != nil {
@@ -68,7 +72,11 @@ func ParseStruct(ctx context.Context, s interface{}, failOnParseError bool) erro
 					}
 					continue
 				}
-				v.Field(i).SetInt(value)
+				if value != 0 {
+					v.Field(i).SetInt(value)
+				} else {
+					break
+				}
 			case reflect.Float64, reflect.Float32:
 				value, err := f.GetFloat(ctx, tag)
 				if err != nil {
@@ -77,7 +85,11 @@ func ParseStruct(ctx context.Context, s interface{}, failOnParseError bool) erro
 					}
 					continue
 				}
-				v.Field(i).SetFloat(value)
+				if value != 0 {
+					v.Field(i).SetFloat(value)
+				} else {
+					break
+				}
 			case reflect.Bool:
 				value, err := f.GetBoolean(ctx, tag)
 				if err != nil {
@@ -86,7 +98,11 @@ func ParseStruct(ctx context.Context, s interface{}, failOnParseError bool) erro
 					}
 					continue
 				}
-				v.Field(i).SetBool(value)
+				if value {
+					v.Field(i).SetBool(value)
+				} else {
+					break
+				}
 			default:
 				log.Printf("WARNING: Unsupported type found in struct: %s\n", v.Type().Field(i).Name)
 			}
