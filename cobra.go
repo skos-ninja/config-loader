@@ -1,17 +1,15 @@
 package config
 
 import (
-	"context"
 	"strings"
+
+	"github.com/skos-ninja/config-loader/pkg/context"
+	"github.com/skos-ninja/config-loader/pkg/parser"
 
 	"github.com/spf13/cobra"
 )
 
 const configFlag = "config"
-
-type contextKey string
-
-var cmdKey contextKey = "cmd"
 
 func Init(cmd *cobra.Command) {
 	cmd.PersistentFlags().String(configFlag, "", "Set the config data")
@@ -29,45 +27,27 @@ func MustLoad(cmd *cobra.Command, config interface{}) {
 }
 
 func load(cmd *cobra.Command, config interface{}) error {
-	ctx := getContextWithCmd(cmd)
+	ctx := context.GetContextWithCmd(cmd)
 
-	e := EnvironmentParser{}
+	e := parser.EnvironmentParser{}
 	d, _ := e.GetString(ctx, strings.ToUpper(configFlag))
 	err := setJSONConfig(d, config)
 	if err != nil {
 		return err
 	}
 
-	flags := cmd.LocalFlags()
-	flag := flags.Lookup(configFlag)
-	if flag != nil {
-		val := flag.Value.String()
-		err = setJSONConfig(val, config)
+	f := parser.FlagParser{}
+	flag, err := f.GetString(ctx, strings.ToUpper(configFlag))
+	if flag != "" {
+		err = setJSONConfig(flag, config)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = ParseStruct(ctx, config, false)
+	err = parser.ParseStruct(ctx, config, false)
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func getContextWithCmd(cmd *cobra.Command) context.Context {
-	ctx := cmd.Context()
-	if ctx == nil {
-		ctx = context.TODO()
-	}
-	return context.WithValue(ctx, cmdKey, cmd)
-}
-
-func getCmdFromContext(ctx context.Context) *cobra.Command {
-	v := ctx.Value(cmdKey)
-	if v != nil {
-		return v.(*cobra.Command)
 	}
 
 	return nil

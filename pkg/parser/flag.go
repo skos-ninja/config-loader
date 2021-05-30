@@ -1,10 +1,12 @@
-package config
+package parser
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"strconv"
+
+	c "github.com/skos-ninja/config-loader/pkg/context"
 )
 
 const flagTagName = "flag"
@@ -24,7 +26,7 @@ type FlagParser struct {
 
 // GetString returns a environment variable as a string
 func (p FlagParser) GetString(ctx context.Context, name string) (string, error) {
-	cmd := getCmdFromContext(ctx)
+	cmd := c.GetCmdFromContext(ctx)
 	if cmd == nil {
 		return "", ErrNotUsingCobraCtx
 	}

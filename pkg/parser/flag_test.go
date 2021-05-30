@@ -1,30 +1,52 @@
-package config
+package parser
 
 import (
 	"context"
-	"os"
 	"testing"
+
+	c "github.com/skos-ninja/config-loader/pkg/context"
+
+	"github.com/spf13/cobra"
 )
 
-type env struct {
+type flag struct {
 	name       string
 	value      string
 	forceEmpty bool
 }
 
-var e = EnvironmentParser{}
+var f = FlagParser{}
 
-func TestGetEnvString(t *testing.T) {
+func TestGetFlagNotCobra(t *testing.T) {
 	ctx := context.Background()
+	_, err := f.GetString(ctx, "test")
+	if err == nil || err != ErrNotUsingCobraCtx {
+		t.Errorf("expected() = %v, want %v", err, ErrNotUsingCobraCtx)
+	}
+}
+
+func TestGetFlagNotFound(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	ctx := c.GetContextWithCmd(cmd)
+	_, err := f.GetString(ctx, "test")
+	expectErr := ErrFlagNotFound{flag: "test"}
+	if err == nil || err != expectErr {
+		t.Errorf("expected() = %v, want %v", err, expectErr)
+	}
+}
+
+func TestGetFlagString(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	ctx := c.GetContextWithCmd(cmd)
 	tests := []struct {
 		name    string
-		args    env
+		args    flag
 		want    string
 		wantErr bool
 	}{
 		{
 			name: "Valid String: test",
-			args: env{
+			args: flag{
 				name:  "valid-string",
 				value: "test",
 			},
@@ -33,7 +55,7 @@ func TestGetEnvString(t *testing.T) {
 		},
 		{
 			name: "Valid Empty String",
-			args: env{
+			args: flag{
 				name:       "valid-empty-string",
 				value:      "",
 				forceEmpty: true,
@@ -43,7 +65,7 @@ func TestGetEnvString(t *testing.T) {
 		},
 		{
 			name: "Invalid Empty String",
-			args: env{
+			args: flag{
 				name:  "invalid-empty-string",
 				value: "",
 			},
@@ -53,8 +75,8 @@ func TestGetEnvString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setEnv(t, tt.args)
-			got, err := e.GetString(ctx, tt.args.name)
+			setFlag(cmd, tt.args)
+			got, err := f.GetString(ctx, tt.args.name)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetString() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -66,17 +88,18 @@ func TestGetEnvString(t *testing.T) {
 	}
 }
 
-func TestGetEnvInt(t *testing.T) {
-	ctx := context.Background()
+func TestGetFlagInt(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	ctx := c.GetContextWithCmd(cmd)
 	tests := []struct {
 		name    string
-		args    env
+		args    flag
 		want    int64
 		wantErr bool
 	}{
 		{
 			name: "Valid Int: 1",
-			args: env{
+			args: flag{
 				name:  "valid-int",
 				value: "1",
 			},
@@ -85,7 +108,7 @@ func TestGetEnvInt(t *testing.T) {
 		},
 		{
 			name: "Valid Int: -1",
-			args: env{
+			args: flag{
 				name:  "valid-negative-int",
 				value: "-1",
 			},
@@ -94,7 +117,7 @@ func TestGetEnvInt(t *testing.T) {
 		},
 		{
 			name: "Invalid Int: missing",
-			args: env{
+			args: flag{
 				name:  "invalid-missing",
 				value: "",
 			},
@@ -103,7 +126,7 @@ func TestGetEnvInt(t *testing.T) {
 		},
 		{
 			name: "Invalid Int: not-a-int",
-			args: env{
+			args: flag{
 				name:  "invalid-int",
 				value: "not-a-int",
 			},
@@ -112,7 +135,7 @@ func TestGetEnvInt(t *testing.T) {
 		},
 		{
 			name: "Invalid Int: not-a-whole-int",
-			args: env{
+			args: flag{
 				name:  "invalid-whole-int",
 				value: "100.10",
 			},
@@ -122,8 +145,8 @@ func TestGetEnvInt(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setEnv(t, tt.args)
-			got, err := e.GetInt(ctx, tt.args.name)
+			setFlag(cmd, tt.args)
+			got, err := f.GetInt(ctx, tt.args.name)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetInt() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -135,18 +158,19 @@ func TestGetEnvInt(t *testing.T) {
 	}
 }
 
-func TestGetFloat(t *testing.T) {
-	ctx := context.Background()
+func TestGetFlagFloat(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	ctx := c.GetContextWithCmd(cmd)
 	tests := []struct {
 		name    string
 		e       EnvironmentParser
-		args    env
+		args    flag
 		want    float64
 		wantErr bool
 	}{
 		{
 			name: "Valid Float: 1",
-			args: env{
+			args: flag{
 				name:  "valid-float",
 				value: "1",
 			},
@@ -155,7 +179,7 @@ func TestGetFloat(t *testing.T) {
 		},
 		{
 			name: "Valid Float: -1",
-			args: env{
+			args: flag{
 				name:  "valid-negative-float",
 				value: "-1",
 			},
@@ -164,7 +188,7 @@ func TestGetFloat(t *testing.T) {
 		},
 		{
 			name: "Invalid Float: missing",
-			args: env{
+			args: flag{
 				name:  "invalid-missing",
 				value: "",
 			},
@@ -173,7 +197,7 @@ func TestGetFloat(t *testing.T) {
 		},
 		{
 			name: "Invalid Float: not-a-float",
-			args: env{
+			args: flag{
 				name:  "invalid-float",
 				value: "not-a-float",
 			},
@@ -183,8 +207,8 @@ func TestGetFloat(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setEnv(t, tt.args)
-			got, err := e.GetFloat(ctx, tt.args.name)
+			setFlag(cmd, tt.args)
+			got, err := f.GetFloat(ctx, tt.args.name)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetFloat() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -196,17 +220,18 @@ func TestGetFloat(t *testing.T) {
 	}
 }
 
-func TestGetEnvBoolean(t *testing.T) {
-	ctx := context.Background()
+func TestGetFlagBoolean(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	ctx := c.GetContextWithCmd(cmd)
 	tests := []struct {
 		name    string
-		args    env
+		args    flag
 		want    bool
 		wantErr bool
 	}{
 		{
 			name: "Valid Boolean: true",
-			args: env{
+			args: flag{
 				name:  "valid-true",
 				value: "true",
 			},
@@ -215,7 +240,7 @@ func TestGetEnvBoolean(t *testing.T) {
 		},
 		{
 			name: "Valid Capital Boolean: true",
-			args: env{
+			args: flag{
 				name:  "valid-capital-true",
 				value: "TRUE",
 			},
@@ -224,7 +249,7 @@ func TestGetEnvBoolean(t *testing.T) {
 		},
 		{
 			name: "Valid Boolean: false",
-			args: env{
+			args: flag{
 				name:  "valid-false",
 				value: "false",
 			},
@@ -233,7 +258,7 @@ func TestGetEnvBoolean(t *testing.T) {
 		},
 		{
 			name: "Valid Capital Boolean: false",
-			args: env{
+			args: flag{
 				name:  "valid-capital-false",
 				value: "FALSE",
 			},
@@ -242,7 +267,7 @@ func TestGetEnvBoolean(t *testing.T) {
 		},
 		{
 			name: "Invalid Boolean: missing",
-			args: env{
+			args: flag{
 				name:  "invalid-missing",
 				value: "",
 			},
@@ -251,7 +276,7 @@ func TestGetEnvBoolean(t *testing.T) {
 		},
 		{
 			name: "Invalid Boolean: not-a-bool",
-			args: env{
+			args: flag{
 				name:  "invalid-bool",
 				value: "not-a-bool",
 			},
@@ -261,8 +286,8 @@ func TestGetEnvBoolean(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setEnv(t, tt.args)
-			got, err := e.GetBoolean(ctx, tt.args.name)
+			setFlag(cmd, tt.args)
+			got, err := f.GetBoolean(ctx, tt.args.name)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetBoolean() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -274,15 +299,12 @@ func TestGetEnvBoolean(t *testing.T) {
 	}
 }
 
-func setEnv(t *testing.T, env env) {
-	// Ignore setting if the value is empty
-	if env.value == "" && !env.forceEmpty {
-		return
-	}
-	// Set the environment variable before fetching
-	err := os.Setenv(env.name, env.value)
-	if err != nil {
-		t.Error(err)
-		return
+func setFlag(cmd *cobra.Command, flag flag) {
+	cmd.Flags().String(flag.name, "", "")
+
+	if flag.value != "" || flag.forceEmpty {
+		f := cmd.Flag(flag.name)
+		f.Value.Set(flag.value)
+		f.Changed = true
 	}
 }

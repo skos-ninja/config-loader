@@ -1,9 +1,11 @@
-package config
+package parser
 
 import (
 	"context"
 	"strconv"
 	"testing"
+
+	c "github.com/skos-ninja/config-loader/pkg/context"
 
 	"github.com/spf13/cobra"
 )
@@ -92,7 +94,7 @@ func TestFlagParse(t *testing.T) {
 	setFlag(cmd, flag{name: "test-float", value: strconv.FormatFloat(expected.Float, 'g', -1, 64)})
 	setFlag(cmd, flag{name: "test-boolean", value: strconv.FormatBool(expected.Boolean)})
 	setFlag(cmd, flag{name: "test-nested", value: expected.Nested.Field})
-	ctx := getContextWithCmd(cmd)
+	ctx := c.GetContextWithCmd(cmd)
 
 	err := ParseStruct(ctx, original, true)
 	if err != nil {
@@ -118,7 +120,7 @@ func TestMultipleTags(t *testing.T) {
 	cmd := &cobra.Command{Use: "test"}
 	setEnv(t, env{name: "test-string", value: expected.Str})
 	setFlag(cmd, flag{name: "test-string", value: ""})
-	ctx := getContextWithCmd(cmd)
+	ctx := c.GetContextWithCmd(cmd)
 
 	err := ParseStruct(ctx, original, false)
 	if err != nil {
