@@ -35,7 +35,9 @@ type exampleConfig struct {
 }
 
 func runE(cmd *cobra.Command, args []string) error {
-	config.Load(cmd, cfg)
+	if err := config.Load(cmd, cfg); err != nil {
+		return err
+	}
 
 	fmt.Printf("env:  %s\n", cfg.Env)
 	fmt.Printf("flag: %s\n", cfg.Flag)
