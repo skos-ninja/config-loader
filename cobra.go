@@ -57,7 +57,11 @@ func load(cmd *cobra.Command, config interface{}) error {
 }
 
 func getContextWithCmd(cmd *cobra.Command) context.Context {
-	return context.WithValue(cmd.Context(), cmdKey, cmd)
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.TODO()
+	}
+	return context.WithValue(ctx, cmdKey, cmd)
 }
 
 func getCmdFromContext(ctx context.Context) *cobra.Command {
