@@ -3,7 +3,6 @@ package parser
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"reflect"
 )
@@ -48,7 +47,6 @@ func ParseStruct(ctx context.Context, s interface{}, failOnParseError bool) erro
 						}
 						continue
 					}
-					fmt.Println(s)
 					v.Field(i).Set(reflect.ValueOf(s))
 				default:
 					log.Printf("WARNING: Unsupported slice type found in struct: %s\n", v.Field(i).Type().Elem().Kind())
