@@ -3,6 +3,7 @@ package parser
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"reflect"
 )
@@ -11,7 +12,7 @@ import (
 func ParseStruct(ctx context.Context, s interface{}, failOnParseError bool) error {
 	rv := reflect.ValueOf(s)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return errors.New("Struct must be a pointer and not nil")
+		return errors.New("struct must be a pointer and not nil")
 	}
 
 	v := rv.Elem()
@@ -37,6 +38,21 @@ func ParseStruct(ctx context.Context, s interface{}, failOnParseError bool) erro
 			}
 
 			switch kind {
+			case reflect.Slice:
+				switch v.Field(i).Type().Elem().Kind() {
+				case reflect.String:
+					s, err := f.GetStringSlice(ctx, tag)
+					if err != nil {
+						if failOnParseError {
+							return err
+						}
+						continue
+					}
+					fmt.Println(s)
+					v.Field(i).Set(reflect.ValueOf(s))
+				default:
+					log.Printf("WARNING: Unsupported slice type found in struct: %s\n", v.Field(i).Type().Elem().Kind())
+				}
 			case reflect.String:
 				value, err := f.GetString(ctx, tag)
 				if err != nil {

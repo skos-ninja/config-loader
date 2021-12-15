@@ -79,8 +79,11 @@ func (e EnvironmentParser) GetBoolean(ctx context.Context, name string) (bool, e
 	return parsebool, nil
 }
 
-// getEnvNameFromTag expects that the first arg of the tag is the name
-func getEnvNameFromTag(tag string) string {
-	args := strings.Split(tag, ",")
-	return args[0]
+func (e EnvironmentParser) GetStringSlice(ctx context.Context, name string) ([]string, error) {
+	d, err := e.GetString(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return strings.Split(d, ","), nil
 }

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"reflect"
 	"strconv"
 	"testing"
 
@@ -89,11 +90,11 @@ func TestFlagParse(t *testing.T) {
 		},
 	}
 	cmd := &cobra.Command{Use: "test"}
-	setFlag(cmd, flag{name: "test-string", value: expected.Str})
-	setFlag(cmd, flag{name: "test-int", value: strconv.Itoa(expected.Inter)})
-	setFlag(cmd, flag{name: "test-float", value: strconv.FormatFloat(expected.Float, 'g', -1, 64)})
-	setFlag(cmd, flag{name: "test-boolean", value: strconv.FormatBool(expected.Boolean)})
-	setFlag(cmd, flag{name: "test-nested", value: expected.Nested.Field})
+	setFlag(cmd, flag{name: "test-string", value: expected.Str, kind: reflect.String})
+	setFlag(cmd, flag{name: "test-int", value: strconv.Itoa(expected.Inter), kind: reflect.Int64})
+	setFlag(cmd, flag{name: "test-float", value: strconv.FormatFloat(expected.Float, 'g', -1, 64), kind: reflect.Float64})
+	setFlag(cmd, flag{name: "test-boolean", value: strconv.FormatBool(expected.Boolean), kind: reflect.Bool})
+	setFlag(cmd, flag{name: "test-nested", value: expected.Nested.Field, kind: reflect.String})
 	ctx := c.GetContextWithCmd(cmd)
 
 	err := ParseStruct(ctx, original, true)
@@ -119,7 +120,7 @@ func TestMultipleTags(t *testing.T) {
 	}
 	cmd := &cobra.Command{Use: "test"}
 	setEnv(t, env{name: "test-string", value: expected.Str})
-	setFlag(cmd, flag{name: "test-string", value: ""})
+	setFlag(cmd, flag{name: "test-string", value: "", kind: reflect.String})
 	ctx := c.GetContextWithCmd(cmd)
 
 	err := ParseStruct(ctx, original, false)
@@ -129,5 +130,31 @@ func TestMultipleTags(t *testing.T) {
 
 	if *original != *expected {
 		t.Errorf("parseStruct() = %v, want %v", *original, *expected)
+	}
+}
+
+func TestSlice(t *testing.T) {
+	type Test struct {
+		Str []string `env:"test-slice" flag:"test-slice"`
+	}
+
+	original := &Test{
+		Str: []string{},
+	}
+	expected := &Test{
+		Str: []string{"test-value"},
+	}
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().StringSlice("test-slice", []string{}, "")
+	cmd.Flags().Set("test-slice", "test-value")
+	ctx := c.GetContextWithCmd(cmd)
+
+	err := ParseStruct(ctx, original, false)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !reflect.DeepEqual(original, expected) {
+		t.Errorf("parseStruct() = %v, want %v", original, expected)
 	}
 }

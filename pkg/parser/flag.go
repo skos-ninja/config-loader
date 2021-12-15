@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	c "github.com/skos-ninja/config-loader/pkg/context"
+
+	"github.com/spf13/pflag"
 )
 
 const flagTagName = "flag"
@@ -21,23 +22,34 @@ func (e ErrFlagNotFound) Error() string {
 	return fmt.Sprintf("Flag not found: %s", e.flag)
 }
 
+var ErrFlagsNotFound = errors.New("flags not found in cobra context")
+
 type FlagParser struct {
+}
+
+func (p FlagParser) getFlags(ctx context.Context) (*pflag.FlagSet, error) {
+	cmd := c.GetCmdFromContext(ctx)
+	if cmd == nil {
+		return nil, ErrNotUsingCobraCtx
+	}
+
+	flags := cmd.Flags()
+	if flags == nil {
+		return nil, ErrFlagsNotFound
+	}
+
+	return flags, nil
 }
 
 // GetString returns a environment variable as a string
 func (p FlagParser) GetString(ctx context.Context, name string) (string, error) {
-	cmd := c.GetCmdFromContext(ctx)
-	if cmd == nil {
-		return "", ErrNotUsingCobraCtx
+	flags, err := p.getFlags(ctx)
+	if err != nil {
+		return "", err
 	}
 
-	flag := cmd.Flag(name)
-	if flag == nil {
-		return "", ErrFlagNotFound{name}
-	}
-
-	if flag.Changed {
-		return flag.Value.String(), nil
+	if flags.Changed(name) {
+		return flags.GetString(name)
 	}
 
 	return "", ErrFlagNotFound{name}
@@ -45,45 +57,56 @@ func (p FlagParser) GetString(ctx context.Context, name string) (string, error) 
 
 // GetInt returns a environment variable as an integer
 func (p FlagParser) GetInt(ctx context.Context, name string) (int64, error) {
-	d, err := p.GetString(ctx, name)
+	flags, err := p.getFlags(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	parseint, err := strconv.ParseInt(d, 10, 64)
-	if err != nil {
-		return 0, err
+	if flags.Changed(name) {
+		return flags.GetInt64(name)
 	}
 
-	return parseint, nil
+	return 0, ErrFlagNotFound{name}
 }
 
 // GetFloat returns a flag variable as a float
 func (p FlagParser) GetFloat(ctx context.Context, name string) (float64, error) {
-	d, err := p.GetString(ctx, name)
+	flags, err := p.getFlags(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	parsefloat, err := strconv.ParseFloat(d, 64)
-	if err != nil {
-		return 0, err
+	if flags.Changed(name) {
+		return flags.GetFloat64(name)
 	}
 
-	return parsefloat, nil
+	return 0, ErrFlagNotFound{name}
 }
 
 // GetBoolean returns a flag variable as a boolean
 func (p FlagParser) GetBoolean(ctx context.Context, name string) (bool, error) {
-	d, err := p.GetString(ctx, name)
+	flags, err := p.getFlags(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	parsebool, err := strconv.ParseBool(d)
-	if err != nil {
-		return false, err
+	if flags.Changed(name) {
+		return flags.GetBool(name)
 	}
 
-	return parsebool, nil
+	return false, ErrFlagNotFound{name}
+}
+
+// GetStringSlice returns a flag variable as a string slice
+func (p FlagParser) GetStringSlice(ctx context.Context, name string) ([]string, error) {
+	flags, err := p.getFlags(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if flags.Changed(name) {
+		return flags.GetStringSlice(name)
+	}
+
+	return nil, ErrFlagNotFound{name}
 }

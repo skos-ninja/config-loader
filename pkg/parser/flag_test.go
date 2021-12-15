@@ -2,6 +2,8 @@ package parser
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"testing"
 
 	c "github.com/skos-ninja/config-loader/pkg/context"
@@ -12,6 +14,7 @@ import (
 type flag struct {
 	name       string
 	value      string
+	kind       reflect.Kind
 	forceEmpty bool
 }
 
@@ -49,6 +52,7 @@ func TestGetFlagString(t *testing.T) {
 			args: flag{
 				name:  "valid-string",
 				value: "test",
+				kind:  reflect.String,
 			},
 			want:    "test",
 			wantErr: false,
@@ -59,6 +63,7 @@ func TestGetFlagString(t *testing.T) {
 				name:       "valid-empty-string",
 				value:      "",
 				forceEmpty: true,
+				kind:       reflect.String,
 			},
 			want:    "",
 			wantErr: false,
@@ -68,6 +73,7 @@ func TestGetFlagString(t *testing.T) {
 			args: flag{
 				name:  "invalid-empty-string",
 				value: "",
+				kind:  reflect.String,
 			},
 			want:    "",
 			wantErr: true,
@@ -102,6 +108,7 @@ func TestGetFlagInt(t *testing.T) {
 			args: flag{
 				name:  "valid-int",
 				value: "1",
+				kind:  reflect.Int64,
 			},
 			want:    1,
 			wantErr: false,
@@ -111,6 +118,7 @@ func TestGetFlagInt(t *testing.T) {
 			args: flag{
 				name:  "valid-negative-int",
 				value: "-1",
+				kind:  reflect.Int64,
 			},
 			want:    -1,
 			wantErr: false,
@@ -120,24 +128,7 @@ func TestGetFlagInt(t *testing.T) {
 			args: flag{
 				name:  "invalid-missing",
 				value: "",
-			},
-			want:    0,
-			wantErr: true,
-		},
-		{
-			name: "Invalid Int: not-a-int",
-			args: flag{
-				name:  "invalid-int",
-				value: "not-a-int",
-			},
-			want:    0,
-			wantErr: true,
-		},
-		{
-			name: "Invalid Int: not-a-whole-int",
-			args: flag{
-				name:  "invalid-whole-int",
-				value: "100.10",
+				kind:  reflect.Int64,
 			},
 			want:    0,
 			wantErr: true,
@@ -173,6 +164,7 @@ func TestGetFlagFloat(t *testing.T) {
 			args: flag{
 				name:  "valid-float",
 				value: "1",
+				kind:  reflect.Float64,
 			},
 			want:    1,
 			wantErr: false,
@@ -182,27 +174,10 @@ func TestGetFlagFloat(t *testing.T) {
 			args: flag{
 				name:  "valid-negative-float",
 				value: "-1",
+				kind:  reflect.Float64,
 			},
 			want:    -1,
 			wantErr: false,
-		},
-		{
-			name: "Invalid Float: missing",
-			args: flag{
-				name:  "invalid-missing",
-				value: "",
-			},
-			want:    0,
-			wantErr: true,
-		},
-		{
-			name: "Invalid Float: not-a-float",
-			args: flag{
-				name:  "invalid-float",
-				value: "not-a-float",
-			},
-			want:    0,
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -234,6 +209,7 @@ func TestGetFlagBoolean(t *testing.T) {
 			args: flag{
 				name:  "valid-true",
 				value: "true",
+				kind:  reflect.Bool,
 			},
 			want:    true,
 			wantErr: false,
@@ -243,6 +219,7 @@ func TestGetFlagBoolean(t *testing.T) {
 			args: flag{
 				name:  "valid-capital-true",
 				value: "TRUE",
+				kind:  reflect.Bool,
 			},
 			want:    true,
 			wantErr: false,
@@ -252,6 +229,7 @@ func TestGetFlagBoolean(t *testing.T) {
 			args: flag{
 				name:  "valid-false",
 				value: "false",
+				kind:  reflect.Bool,
 			},
 			want:    false,
 			wantErr: false,
@@ -261,6 +239,7 @@ func TestGetFlagBoolean(t *testing.T) {
 			args: flag{
 				name:  "valid-capital-false",
 				value: "FALSE",
+				kind:  reflect.Bool,
 			},
 			want:    false,
 			wantErr: false,
@@ -270,15 +249,7 @@ func TestGetFlagBoolean(t *testing.T) {
 			args: flag{
 				name:  "invalid-missing",
 				value: "",
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "Invalid Boolean: not-a-bool",
-			args: flag{
-				name:  "invalid-bool",
-				value: "not-a-bool",
+				kind:  reflect.Bool,
 			},
 			want:    false,
 			wantErr: true,
@@ -300,11 +271,24 @@ func TestGetFlagBoolean(t *testing.T) {
 }
 
 func setFlag(cmd *cobra.Command, flag flag) {
-	cmd.Flags().String(flag.name, "", "")
+	switch flag.kind {
+	case reflect.String:
+		cmd.Flags().String(flag.name, "", "")
+	case reflect.Int64:
+		cmd.Flags().Int64(flag.name, 0, "")
+	case reflect.Float64:
+		cmd.Flags().Float64(flag.name, 0, "")
+	case reflect.Bool:
+		cmd.Flags().Bool(flag.name, false, "")
+	default:
+		panic(fmt.Sprintf("%v unsupported type: %v", flag.name, flag.kind))
+	}
 
 	if flag.value != "" || flag.forceEmpty {
-		f := cmd.Flag(flag.name)
-		f.Value.Set(flag.value)
-		f.Changed = true
+		err := cmd.Flags().Set(flag.name, flag.value)
+		if err != nil {
+			panic(err)
+		}
+		cmd.Flags().Lookup(flag.name).Changed = true
 	}
 }
