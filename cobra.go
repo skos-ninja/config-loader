@@ -32,35 +32,27 @@ func load(cmd *cobra.Command, config interface{}) error {
 
 	// Try to read the config json from a file
 	s, _ := os.ReadFile(configFlag)
-	if string(s) != "" {
-		err := setJSONConfig(string(s), config)
-		if err != nil {
-			return err
-		}
+	err := setJSONConfig(string(s), config)
+	if err != nil {
+		return err
 	}
 
 	// Try to read the config json from an env
-	e := parser.EnvironmentParser{}
-	d, _ := e.GetString(ctx, strings.ToUpper(configFlag))
-	if d != "" {
-		err := setJSONConfig(d, config)
-		if err != nil {
-			return err
-		}
+	d, _ := parser.EnvironmentParser{}.GetString(ctx, strings.ToUpper(configFlag))
+	err = setJSONConfig(d, config)
+	if err != nil {
+		return err
 	}
 
 	// Try to read the config json from a flag
-	f := parser.FlagParser{}
-	flag, _ := f.GetString(ctx, strings.ToUpper(configFlag))
-	if flag != "" {
-		err := setJSONConfig(flag, config)
-		if err != nil {
-			return err
-		}
+	flag, _ := parser.FlagParser{}.GetString(ctx, strings.ToUpper(configFlag))
+	err = setJSONConfig(flag, config)
+	if err != nil {
+		return err
 	}
 
 	// Perform parsing on each field
-	err := parser.ParseStruct(ctx, config, false)
+	err = parser.ParseStruct(ctx, config, false)
 	if err != nil {
 		return err
 	}
