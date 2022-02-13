@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"strings"
 
 	"github.com/skos-ninja/config-loader/pkg/context"
@@ -12,7 +13,7 @@ import (
 const configFlag = "config"
 
 func Init(cmd *cobra.Command) {
-	cmd.PersistentFlags().String(configFlag, "", "Set the config data")
+	cmd.PersistentFlags().String(configFlag, "", "Set the json config data (Input types: file, environment, flag)")
 }
 
 func Load(cmd *cobra.Command, config interface{}) error {
@@ -29,23 +30,37 @@ func MustLoad(cmd *cobra.Command, config interface{}) {
 func load(cmd *cobra.Command, config interface{}) error {
 	ctx := context.GetContextWithCmd(cmd)
 
-	e := parser.EnvironmentParser{}
-	d, _ := e.GetString(ctx, strings.ToUpper(configFlag))
-	err := setJSONConfig(d, config)
-	if err != nil {
-		return err
-	}
-
-	f := parser.FlagParser{}
-	flag, err := f.GetString(ctx, strings.ToUpper(configFlag))
-	if flag != "" {
-		err = setJSONConfig(flag, config)
+	// Try to read the config json from a file
+	s, _ := os.ReadFile(configFlag)
+	if string(s) != "" {
+		err := setJSONConfig(string(s), config)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = parser.ParseStruct(ctx, config, false)
+	// Try to read the config json from an env
+	e := parser.EnvironmentParser{}
+	d, _ := e.GetString(ctx, strings.ToUpper(configFlag))
+	if d != "" {
+		err := setJSONConfig(d, config)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Try to read the config json from a flag
+	f := parser.FlagParser{}
+	flag, _ := f.GetString(ctx, strings.ToUpper(configFlag))
+	if flag != "" {
+		err := setJSONConfig(flag, config)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Perform parsing on each field
+	err := parser.ParseStruct(ctx, config, false)
 	if err != nil {
 		return err
 	}
