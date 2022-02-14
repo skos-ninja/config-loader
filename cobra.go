@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const configFlag = "config"
+var configFlag = ""
 
 func Init(cmd *cobra.Command) {
-	cmd.PersistentFlags().String(configFlag, "", "Set the json config data (Input types: file, environment, flag)")
+	cmd.PersistentFlags().StringVar(&configFlag, "config", configFlag, "Set the json config data (Input types: file path, environment var name, flag name)")
 }
 
 func Load(cmd *cobra.Command, config interface{}) error {
@@ -45,7 +45,7 @@ func load(cmd *cobra.Command, config interface{}) error {
 	}
 
 	// Try to read the config json from a flag
-	flag, _ := parser.FlagParser{}.GetString(ctx, strings.ToUpper(configFlag))
+	flag, _ := parser.FlagParser{}.GetString(ctx, configFlag)
 	err = setJSONConfig(flag, config)
 	if err != nil {
 		return err
